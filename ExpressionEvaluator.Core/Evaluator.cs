@@ -1,109 +1,132 @@
-﻿namespace ExpressionEvaluator.Core;
+using System.Collections.Generic;
+
+namespace ExpressionEvaluator.Core;
 
 public class Evaluator
 {
     public static double Evaluate(string infix)
     {
+  
         var postfix = InfixToPostfix(infix);
         return EvaluatePostfix(postfix);
     }
 
-    private static string InfixToPostfix(string infix)
+    private static Queue<string> InfixToPostfix(string infix)
     {
-        var postFix = string.Empty;
-        var stack = new Stack<char>();
-        foreach (var item in infix)
+        var cola = new Queue<string>(); 
+        var pila = new Stack<char>();
+
+        for (int i = 0; i < infix.Length; i++)
         {
-            if (IsOperator(item))
+            char c = infix[i];
+
+            // 
+            if (char.IsDigit(c) || c == '.')
             {
-                if (stack.Count == 0)
+                string num = "";
+
+                while (i < infix.Length && (char.IsDigit(infix[i]) || infix[i] == '.'))
                 {
-                    stack.Push(item);
+                    num += infix[i];
+                    i++;
+                }
+
+                cola.Enqueue(num);
+                i--; 
+            }
+            else if (EsOperador(c))
+            {
+                if (pila.Count == 0 || c == '(')
+                {
+                    pila.Push(c);
+                }
+                else if (c == ')')
+                {
+                    while (pila.Peek() != '(')
+                    {
+                        cola.Enqueue(pila.Pop().ToString());
+                    }
+                    pila.Pop(); 
                 }
                 else
                 {
-                    if (item == ')')
+                    
+                    while (pila.Count > 0 && PrioridadPila(pila.Peek()) >= PrioridadEntrada(c))
                     {
-                        do
-                        {
-                            postFix += stack.Pop();
-                        } while (stack.Peek() != '(');
-                        stack.Pop();
+                        cola.Enqueue(pila.Pop().ToString());
                     }
-                    else
-                    {
-                        if (PriorityInfix(item) > PriorityStack(stack.Peek()))
-                        {
-                            stack.Push(item);
-                        }
-                        else
-                        {
-                            postFix += stack.Pop();
-                            stack.Push(item);
-                        }
-                    }
+                    pila.Push(c);
                 }
             }
-            else
-            {
-                postFix += item;
-            }
         }
-        while (stack.Count > 0)
+
+        
+        while (pila.Count > 0)
         {
-            postFix += stack.Pop();
+            cola.Enqueue(pila.Pop().ToString());
         }
-        return postFix;
+
+        return cola;
     }
 
-    private static int PriorityStack(char item) => item switch
+    private static double EvaluatePostfix(Queue<string> postfix)
     {
-        '^' => 3,
-        '*' => 2,
-        '/' => 2,
-        '+' => 1,
-        '-' => 1,
-        '(' => 0,
-        _ => throw new Exception("Sintax error."),
-    };
+        var pila = new Stack<double>();
 
-    private static int PriorityInfix(char item) => item switch
-    {
-        '^' => 4,
-        '*' => 2,
-        '/' => 2,
-        '+' => 1,
-        '-' => 1,
-        '(' => 5,
-        _ => throw new Exception("Sintax error."),
-    };
-
-    private static double EvaluatePostfix(string postfix)
-    {
-        var stack = new Stack<double>();
-        foreach (char item in postfix)
+        while (postfix.Count > 0)
         {
-            if (IsOperator(item))
+            string item = postfix.Dequeue();
+
+            
+            if (item.Length == 1 && EsOperador(item[0]))
             {
-                var b = stack.Pop();
-                var a = stack.Pop();
-                stack.Push(item switch
+                double b = pila.Pop();
+                double a = pila.Pop();
+
+                double res = 0;
+
+                switch (item[0])
                 {
-                    '+' => a + b,
-                    '-' => a - b,
-                    '*' => a * b,
-                    '/' => a / b,
-                    '^' => Math.Pow(a, b),
-                    _ => throw new Exception("Sintax error."),
-                });
+                    case '+': res = a + b; break;
+                    case '-': res = a - b; break;
+                    case '*': res = a * b; break;
+                    case '/': res = a / b; break;
+                    case '^': res = Math.Pow(a, b); break;
+                }
+
+                pila.Push(res);
             }
             else
             {
-                stack.Push(double.Parse(item.ToString()));
+               
+                pila.Push(double.Parse(item));
             }
         }
-        return stack.Pop();
+
+        return pila.Pop();
     }
 
-    private static bool IsOperator(char item) => "+-*/^()".Contains(item);
+  
+    private static int PrioridadPila(char c)
+    {
+        if (c == '^') return 3;
+        if (c == '*' || c == '/') return 2;
+        if (c == '+' || c == '-') return 1;
+        if (c == '(') return 0;
+        return 0;
+    }
+
+    private static int PrioridadEntrada(char c)
+    {
+        if (c == '^') return 4;
+        if (c == '*' || c == '/') return 2;
+        if (c == '+' || c == '-') return 1;
+        if (c == '(') return 5;
+        return 0;
+    }
+
+    private static bool EsOperador(char c)
+    {
+        return "+-*/^()".Contains(c);
+    }
 }
